@@ -4,7 +4,7 @@ from __future__ import annotations
 Lightweight parameter store for other modules.
 - Stores a single JSON file under <project_root>/params (or PARAMS_DIR).
 - Provides functions: get_param, save_param, get_all, save_params.
-- Includes a tiny CLI: `python Pic/params_store.py get <key>` or `save <key> <json_value>`.
+- Includes a tiny CLI: `python Pic/helpers/params_store.py get <key>` or `save <key> <json_value>`.
 """
 
 import json
@@ -26,8 +26,8 @@ def _resolve_dir() -> Path:
 	if env_dir:
 		dir_path = Path(env_dir)
 	else:
-		# Pic/params_store.py -> project root is parent of Pic
-		dir_path = Path(__file__).resolve().parent.parent / "params"
+		# Pic/helpers/params_store.py -> project root is parent of Pic
+		dir_path = Path(__file__).resolve().parent.parent.parent / "params"
 	dir_path.mkdir(parents=True, exist_ok=True)
 	return dir_path
 
@@ -105,7 +105,7 @@ def _runs_dir() -> Path:
 	if env_path:
 		db_dir = Path(env_path)
 	else:
-		db_dir = Path(__file__).resolve().parent.parent / "database"
+		db_dir = Path(__file__).resolve().parent.parent.parent / "database"
 	db_dir.mkdir(parents=True, exist_ok=True)
 	return db_dir
 
@@ -171,7 +171,7 @@ def _cli() -> None:
 	"""
 	import sys
 	if len(sys.argv) < 2:
-		print("Usage: python Pic/params_store.py [get|save|get_all|save_many] ...")
+		print("Usage: python Pic/helpers/params_store.py [get|save|get_all|save_many] ...")
 		sys.exit(1)
 	cmd = sys.argv[1].lower()
 	if cmd == "get":
