@@ -91,7 +91,7 @@ def main() -> None:
     # RUN PIPELINE
     # ========================================================================
     # Change this to your image path
-    image_path = r'D:\thelet\photo_to_playlist\test_img\beach.jpg'
+    image_path = r'C:\Users\thele\photo_to_playlist\photo_to_playlist\test_img\club.jpg'
     
     run_id = run_pipeline(image_path)
     print(f"\n✅ Pipeline completed successfully!")

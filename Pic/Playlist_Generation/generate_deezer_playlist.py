@@ -15,12 +15,15 @@ import requests
 import json
 import sys
 import argparse
+import os
+from datetime import datetime
 from typing import List, Dict, Optional
 
 
 class DeezerPlaylistGenerator:
     def __init__(self):
         self.base_url = "https://api.deezer.com"
+        self.log_file = None
     
     def search_playlists(self, query: str, limit: int = 3) -> List[Dict]:
         """
@@ -175,6 +178,60 @@ class DeezerPlaylistGenerator:
         
         return True
     
+    def _init_filter_log(self, params: Dict) -> str:
+        """
+        Initialize a log file for tracking the filtering process
+        
+        Args:
+            params: Parameters dict for context
+            
+        Returns:
+            Path to the log file
+        """
+        # Create history directory if it doesn't exist (relative to project root)
+        history_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "history")
+        os.makedirs(history_dir, exist_ok=True)
+        
+        # Generate timestamped log file name
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_filename = f"filtering_log_{timestamp}.txt"
+        log_path = os.path.join(history_dir, log_filename)
+        
+        # Open log file for writing
+        self.log_file = open(log_path, 'w', encoding='utf-8')
+        
+        # Write header
+        search_query = params.get("playlist_search_query", "N/A")
+        self.log_file.write(f"Filtering Process Log - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        self.log_file.write(f"Search Query: {search_query}\n")
+        self.log_file.write(f"Target Tempo: {params.get('target_tempo', 'N/A')} BPM\n")
+        self.log_file.write(f"Target Valence: {params.get('target_valence', 'N/A')}\n")
+        self.log_file.write(f"Target Energy: {params.get('target_energy', 'N/A')}\n")
+        self.log_file.write("=" * 80 + "\n\n")
+        
+        return log_path
+    
+    def _log_filter_result(self, track: Dict, score: float, passed: bool):
+        """
+        Log a song's filtering result
+        
+        Args:
+            track: Track dictionary
+            score: Match score calculated
+            passed: Whether the track passed filtering
+        """
+        if self.log_file:
+            title = track.get("title", "Unknown")
+            artist = track.get("artist", {}).get("name", "Unknown")
+            status = "PASSED" if passed else "FILTERED OUT"
+            self.log_file.write(f"{status} | Score: {score:.3f} | {title} - {artist}\n")
+    
+    def _close_filter_log(self):
+        """Close the filter log file"""
+        if self.log_file:
+            self.log_file.close()
+            self.log_file = None
+    
     def generate_playlist(self, params: Dict) -> Dict:
         """
         Main function: Generate filtered playlist based on parameters
@@ -249,6 +306,10 @@ class DeezerPlaylistGenerator:
         
         print(f"\n✓ Total unique tracks collected: {len(all_tracks)}")
         
+        # Initialize filtering log
+        log_path = self._init_filter_log(params)
+        print(f"📝 Filtering log: {log_path}")
+        
         # Step 3: Filter and score tracks
         print("\nStep 3: Filtering tracks by parameters...")
         filtered_tracks = []
@@ -256,6 +317,9 @@ class DeezerPlaylistGenerator:
         for track in all_tracks:
             # Filter by mood
             if not self.filter_by_mood(track, params):
+                # Calculate score even if filtered out, for logging
+                score = self.calculate_match_score(track, params)
+                self._log_filter_result(track, score, passed=False)
                 continue
             
             # Calculate match score
@@ -279,12 +343,25 @@ class DeezerPlaylistGenerator:
                     "match_score": round(score, 3)
                 }
                 filtered_tracks.append(track_info)
+                self._log_filter_result(track, score, passed=True)
+            else:
+                # Track didn't meet minimum score threshold
+                self._log_filter_result(track, score, passed=False)
         
         # Sort by match score (best matches first)
         filtered_tracks.sort(key=lambda x: x["match_score"], reverse=True)
         
         # Limit to requested number
         final_tracks = filtered_tracks[:target_limit]
+        
+        # Write summary to log file
+        if self.log_file:
+            self.log_file.write("\n" + "=" * 80 + "\n")
+            self.log_file.write(f"SUMMARY:\n")
+            self.log_file.write(f"Total tracks analyzed: {len(all_tracks)}\n")
+            self.log_file.write(f"Tracks passed filtering: {len(filtered_tracks)}\n")
+            self.log_file.write(f"Tracks returned: {len(final_tracks)}\n")
+            self.log_file.write("=" * 80 + "\n")
         
         print(f"✓ Filtered to {len(filtered_tracks)} matching tracks")
         print(f"✓ Returning top {len(final_tracks)} tracks")
@@ -313,6 +390,9 @@ class DeezerPlaylistGenerator:
                 print(f"  {i}. {track['title']} - {track['artist']}")
                 print(f"     BPM: {track['bpm']} | Score: {track['match_score']}")
         print(f"\n{'='*80}\n")
+        
+        # Close filter log
+        self._close_filter_log()
         
         return result
 
