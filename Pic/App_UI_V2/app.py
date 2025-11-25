@@ -26,6 +26,14 @@ from components import (
     render_generate_section,
     render_loading_section,
     render_playlist_section,
+    render_spotify_loading_section,
+)
+
+# Import Spotify handler
+from utils.spotify_handler import (
+    initialize_spotify_session_state,
+    handle_spotify_auth,
+    handle_spotify_save,
 )
 
 # ============================================================================
@@ -38,6 +46,15 @@ st.markdown(get_custom_css(), unsafe_allow_html=True)
 # SESSION STATE INITIALIZATION
 # ============================================================================
 initialize_session_state()
+initialize_spotify_session_state()
+
+# ============================================================================
+# HANDLE SPOTIFY AUTH REQUEST (if triggered separately)
+# ============================================================================
+# Auth is handled via local callback server (port 8888)
+# Note: Auth during save is handled in spotify_loading_section
+if st.session_state.get("spotify_auth_requested", False) and not st.session_state.get("spotify_save_requested", False):
+    handle_spotify_auth()
 
 # ============================================================================
 # HEADER
@@ -96,6 +113,9 @@ with section3_col:
             openai_api_key=openai_api_key,
             playlist_generator=playlist_generator,
         )
+    elif st.session_state.get("spotify_save_requested", False):
+        # Show Spotify saving progress
+        render_spotify_loading_section()
     else:
         # Show playlist
         render_playlist_section(show_audio=show_audio, show_debug=show_debug)

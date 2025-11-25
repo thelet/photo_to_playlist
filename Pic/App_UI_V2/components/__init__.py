@@ -15,6 +15,8 @@ from components.config_section import render_config_section
 from components.generate_section import render_generate_section
 from components.loading_section import render_loading_section
 from components.playlist_section import render_playlist_section
+from components.spotify_section import render_spotify_section, render_spotify_status, render_spotify_info_banner
+from components.spotify_loading_section import render_spotify_loading_section
 
 __all__ = [
     "render_upload_section",
@@ -22,5 +24,9 @@ __all__ = [
     "render_generate_section",
     "render_loading_section",
     "render_playlist_section",
+    "render_spotify_section",
+    "render_spotify_status",
+    "render_spotify_info_banner",
+    "render_spotify_loading_section",
 ]
 

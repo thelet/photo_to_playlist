@@ -1,78 +1,65 @@
 """
-Playlist section component - displays generated playlist (Section 3 result state).
+Playlist mode component for displaying generated playlists (Section 3)
 """
 
-import sys
-from pathlib import Path
 import base64
 from typing import Any, Dict, List
 import streamlit as st
-
-# Add App_UI_V2 to path for imports
-app_ui_v2_dir = Path(__file__).parent.parent
-if str(app_ui_v2_dir) not in sys.path:
-    sys.path.insert(0, str(app_ui_v2_dir))
-
-# Add Pic directory to path for pipeline_steps
-pic_dir = app_ui_v2_dir.parent
-if str(pic_dir) not in sys.path:
-    sys.path.insert(0, str(pic_dir))
-
-from config import THEME, UI_TEXT
-from session_state import reset_session_state
 from pipeline_steps import get_run_record
 
 
-def render_playlist_section(show_audio: bool, show_debug: bool) -> None:
+def render_playlist_mode(show_audio: bool, show_debug: bool):
     """
-    Render the playlist display section with track list and controls.
-    This is Section 3 (right column) when playlist is ready.
+    Render the playlist display mode with track list and controls (Section 3)
     
     Args:
-        show_audio: Whether to show audio previews
+        show_audio: Whether to show audio previews (always True now)
         show_debug: Whether to show debug JSON
     """
-    # Section header
+    # Wrap entire section in dark frame
+    st.markdown('<div class="rb-card-soft">', unsafe_allow_html=True)
+    
+    # Section header with badge
     st.markdown(
-        f"""
+        """
         <div class="section-header">
             <span class="section-badge">3</span>
-            <span class="section-header-icon">{UI_TEXT["section_3_icon"]}</span>
-            <span>{UI_TEXT["section_3_title"]}</span>
+            <span class="section-header-icon">🎵</span>
+            <span>Generate your custom playlist</span>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    
-    # Get playlist data
+
     result: Dict[str, Any] = st.session_state.last_result or {}
     playlist: List[Dict[str, Any]] = result.get("playlist", [])
     metadata: Dict[str, Any] = result.get("metadata", {})
-    
-    # Banner with photo background (if available)
+
+    # Banner with photo background
     if st.session_state.uploaded_image_bytes:
         img_b64 = base64.b64encode(st.session_state.uploaded_image_bytes).decode()
         banner_html = f"""
         <div style="
-            border-radius: 8px;
-            padding: 22px 22px 26px 22px;
-            background: linear-gradient(120deg, rgba(0,0,0,0.7), rgba(0,0,0,0.5)),
-                        url('data:image/jpeg;base64,{img_b64}');
+            border-radius:24px;
+            padding:22px 22px 26px 22px;
+            background:
+                linear-gradient(120deg,rgba(15,23,42,0.9),rgba(15,23,42,0.6)),
+                url('data:image/jpeg;base64,{img_b64}');
             background-size: cover;
             background-position: center;
-            border: 1px solid {THEME['border_color']};
-            margin-bottom: 16px;
-        ">
-            <div style="font-size:12px;color:#ffffff;margin-bottom:4px;">Generated playlist</div>
-            <h2 style="font-size:24px;font-weight:700;color:white;margin:0;">{UI_TEXT["playlist_title"]}</h2>
-            <div style="font-size:12px;color:#e0e0e0;margin-top:2px;">
-                {UI_TEXT["playlist_subtitle"]} · {metadata.get('tracks_returned', len(playlist))} tracks
+            border:1px solid rgba(148,163,184,0.7);
+            margin-bottom:16px;
+            ">
+            <div style="font-size:12px;color:#e5e7eb;margin-bottom:4px;">Generated playlist</div>
+            <h2 style="font-size:24px;font-weight:700;color:white;margin:0;">Your custom playlist</h2>
+            <div style="font-size:12px;color:#cbd5f5;margin-top:2px;">
+                Based on the vibe of your photo · {metadata.get('tracks_returned', len(playlist))} tracks
             </div>
         </div>
         """
         st.markdown(banner_html, unsafe_allow_html=True)
-    
-    # Playlist window with its own scrollbar (HTML component)
+
+    # ---- Playlist window with its own scrollbar (HTML component) ----
     if not playlist:
         st.warning("No tracks returned.")
     else:
@@ -84,16 +71,15 @@ def render_playlist_section(show_audio: bool, show_debug: bool) -> None:
             t_duration = track.get("duration_formatted", "")
             t_preview = track.get("preview_url")
             deezer_link = track.get("deezer_link")
-            
+
             artist_line = t_artist + (f" · {t_album}" if t_album else "")
             initial = (t_title or "?")[0]
-            
-            # Audio preview
+
             audio_html = ""
-            if show_audio and t_preview:
+            # Always show audio preview if available (show_audio is now always True)
+            if t_preview:
                 audio_html = f"<audio controls style='width:100%;margin-top:6px;' src='{t_preview}'></audio>"
-            
-            # Deezer link
+
             link_html = ""
             if deezer_link:
                 link_html = (
@@ -102,8 +88,7 @@ def render_playlist_section(show_audio: bool, show_debug: bool) -> None:
                     f"style='color:#60a5fa;text-decoration:none;'>Open in Deezer</a>"
                     f"</div>"
                 )
-            
-            # Track block HTML with inline styles
+
             track_block = f"""
             <div style='display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;'>
               <div style='width:44px;height:44px;border-radius:12px;
@@ -124,9 +109,8 @@ def render_playlist_section(show_audio: bool, show_debug: bool) -> None:
             </div>
             """
             tracks_html += track_block
-        
-        # Playlist window HTML with scrollbar
-        playlist_outer_start = """
+
+        playlist_window_html = f"""
         <div style="
             margin-top:16px;
             border-radius:18px;
@@ -143,47 +127,39 @@ def render_playlist_section(show_audio: bool, show_debug: bool) -> None:
             </div>
           </div>
           <div style="max-height:430px;overflow-y:auto;margin-top:4px;padding-right:4px;">
-        """
-        
-        playlist_outer_end = """
+            {tracks_html}
           </div>
         </div>
         """
         
-        playlist_html = playlist_outer_start + tracks_html + playlist_outer_end
-        st.components.v1.html(playlist_html, height=520, scrolling=False)
-    
-    # Action buttons - Generate new playlist and Save to Spotify
+        st.components.v1.html(playlist_window_html, height=520, scrolling=False)
+
+    # Generate new playlist button - below playlist window
     st.write("")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        reset_clicked = st.button(
-            UI_TEXT["reset_button_text"],
-            use_container_width=True,
-            key="reset_playlist_btn",
-        )
-        
-        if reset_clicked:
-            reset_session_state()
-            st.rerun()
-    
-    with col2:
-        spotify_save_clicked = st.button(
-            "💾 Save to Spotify",
-            use_container_width=True,
-            key="spotify_save_btn",
-        )
-        
-        if spotify_save_clicked:
-            print("\n" + "="*80)
-            print("[SPOTIFY UI] 💾 Save to Spotify button clicked")
-            print("="*80)
-            st.session_state.spotify_save_requested = True
-            st.session_state.spotify_playlist_to_save = playlist
-            st.rerun()
-    
-    # Debug section
+    reset_clicked = st.button(
+        "🔁 Generate new playlist",
+        use_container_width=True,
+        key="reset_playlist_btn",
+    )
+
+    if reset_clicked:
+        st.session_state.ui_mode = "upload"
+        st.session_state.last_result = None
+        st.session_state.last_run_id = None
+        st.session_state.description = None
+        st.session_state.song_params = None
+        st.session_state.image_path = None
+        st.session_state.uploaded_image_bytes = None
+        st.session_state.uploaded_image_name = None
+        st.session_state.photo_uploaded = False
+        st.session_state.is_generating = False
+
+        st.session_state.upload_counter += 1
+        st.session_state.uploader_key = f"uploader_{st.session_state.upload_counter}"
+
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.rerun()
+
     if show_debug and st.session_state.last_run_id:
         st.markdown("#### Debug · full run record")
         try:
@@ -191,4 +167,5 @@ def render_playlist_section(show_audio: bool, show_debug: bool) -> None:
             st.json(full_record)
         except Exception as e:
             st.error(f"Could not load full run record: {e}")
-
+    
+    st.markdown('</div>', unsafe_allow_html=True)
