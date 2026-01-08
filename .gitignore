@@ -44,3 +44,9 @@ history/filtering_log_*.txt
 .env
 .env.local
 
+# Cleanup folder (old/unused files)
+temp_cleanup/
+
+# Spotify cache
+.spotify_cache
+
